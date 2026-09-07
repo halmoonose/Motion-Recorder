@@ -2,6 +2,7 @@
   "name": "hal-motion-recorder",
   "version": "1.0.0-rc.1",
   "description": "HAL3LAB Motion Recorder RC1 - Live2D + 3D arms + webcam tracking + BGM + transparent recording",
+  "author": "HAL3LAB",
   "main": "src/main.cjs",
   "type": "module",
   "scripts": {
@@ -60,7 +61,7 @@
           ]
         }
       ],
-      "artifactName": "HAL-Motion-Recorder-${version}-${arch}.${ext}",
+      "artifactName": "HAL-Motion-Recorder-${version}-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
