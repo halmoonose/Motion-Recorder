@@ -61,7 +61,6 @@
         }
       ],
       "artifactName": "HAL-Motion-Recorder-${version}-${arch}.${ext}",
-      "publisherName": "HAL3LAB"
     },
     "nsis": {
       "oneClick": false,
