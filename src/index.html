@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HAL Motion Recorder</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div id="fatalBanner" class="fatalBanner hidden"><span id="fatalText"></span><button id="openLogs">ログを開く</button></div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logoMark">H3</span>
+    <b>HAL3LAB</b>
+    <span>Motion Recorder</span>
+    <em>RC1</em>
+  </div>
+  <div class="topActions">
+    <button id="openProject" class="iconBtn" data-icon="folder">開く</button>
+    <button id="saveProject" class="iconBtn" data-icon="save">保存</button>
+    <button id="saveAsProject" class="iconBtn" data-icon="copy">名前を付けて保存</button>
+  </div>
+</header>
+
+<div id="firstRun" class="modal hidden">
+  <div class="modalCard">
+    <div class="setupIcon">L2D</div>
+    <h1>Live2Dの初回設定</h1>
+    <p>Live2Dを表示するため、Cubism SDK for Web に含まれる <b>live2dcubismcore.min.js</b> を一度だけ登録します。</p>
+    <button id="installCoreBtn" class="primary big">ファイルを選択</button>
+    <button id="skipCoreBtn" class="ghost">あとで設定する（簡易3D腕だけ試す）</button>
+    <small>登録したファイルはHAL Motion Recorderのユーザーデータ内へコピーされます。</small>
+  </div>
+</div>
+
+<main>
+<aside class="leftCol">
+  <section class="card">
+    <h2>モデル</h2>
+    <div class="modelLine">
+      <div class="thumb">L2D</div><div class="grow"><b>Live2D</b><small id="live2dPath">未選択</small></div>
+      <button id="pickLive2D" class="mini">変更</button>
+    </div>
+    <div class="modelLine">
+      <div class="thumb">3D</div><div class="grow"><b>3D腕</b><small id="vrmPath">簡易3D腕</small></div>
+      <button id="pickVRM" class="mini">変更</button>
+    </div>
+    <button id="coreSettings" class="subtle">Cubism Core設定</button>
+  </section>
+
+  <section class="card">
+    <h2>トラッキング</h2>
+    <select id="cameraSelect"><option>カメラを検索中...</option></select>
+    <div class="row">
+      <button id="cameraBtn" class="primary iconBtn" data-icon="camera">カメラ開始</button>
+      <button id="calibrateBtn" class="iconOnly" data-icon="target" title="キャリブレーション"></button>
+    </div>
+    <label class="toggleLine"><span>顔・頭</span><input id="faceOn" type="checkbox" checked></label>
+    <label class="toggleLine"><span>肩・上半身</span><input id="poseOn" type="checkbox" checked></label>
+    <label class="toggleLine"><span>腕・手・指</span><input id="handsOn" type="checkbox" checked></label>
+    <label class="rangeLine"><span>スムージング</span><input id="smooth" type="range" min="0" max=".95" step=".01" value=".65"><output id="smoothOut">0.65</output></label>
+  </section>
+
+  <section class="card">
+    <h2>差し込み画像</h2>
+    <div id="slots" class="slots"></div>
+  </section>
+
+  <section class="card">
+    <h2>表示</h2>
+    <label class="toggleLine"><span>ガイド表示</span><input id="guideOn" type="checkbox"></label>
+    <label class="toggleLine"><span>左右反転</span><input id="mirrorOn" type="checkbox" checked></label>
+    <label class="toggleLine"><span>録画に透かし</span><input id="watermarkOn" type="checkbox" checked></label>
+    <label class="toggleLine"><span>録画タグ</span><input id="badgeOn" type="checkbox" checked></label>
+  </section>
+  <img id="brandImage" class="brandImage">
+</aside>
+
+<section class="centerCol">
+  <section class="card stageCard">
+    <div class="stageHead">
+      <h2>プレビュー</h2>
+      <div class="seg">
+        <button data-ratio="9:16" class="active">9:16</button>
+        <button data-ratio="1:1">1:1</button>
+        <button data-ratio="16:9">16:9</button>
+      </div>
+    </div>
+    <div id="stageWrap" class="stage">
+      <video id="webcam" autoplay playsinline muted></video>
+      <canvas id="live2dCanvas" width="1080" height="1920"></canvas>
+      <canvas id="threeCanvas" width="1080" height="1920"></canvas>
+      <canvas id="debugCanvas" width="1080" height="1920"></canvas>
+      <canvas id="composite" width="1080" height="1920"></canvas>
+      <img id="previewWatermark" class="previewWatermark">
+      <img id="previewBadge" class="previewBadge">
+      <div id="emptyHint" class="emptyHint"><b>カメラを開始してください</b><span>同じWebカメラから顔・腕・手をトラッキングします</span></div>
+      <div id="countOverlay" class="countOverlay"></div>
+    </div>
+  </section>
+
+  <section class="card transport">
+    <div class="transportTop">
+      <button id="countdownBtn" class="iconBtn" data-icon="clock"><span id="countdownLabel">3秒</span></button>
+      <button id="recordBtn" class="recordBtn"><span class="recDot"></span><span id="recordLabel">REC</span></button>
+      <button id="snapshotBtn" class="iconBtn" data-icon="camera">PNG撮影</button>
+    </div>
+    <div class="transportBottom">
+      <time id="timer">00:00:00</time>
+      <label class="toggleLine compact"><span>BGMを録画</span><input id="bgmRecord" type="checkbox" checked></label>
+      <label class="toggleLine compact"><span>マイク</span><input id="micOn" type="checkbox"></label>
+    </div>
+    <div class="meter"><i id="meterFill"></i></div>
+  </section>
+</section>
+
+<aside class="rightCol">
+  <section class="card">
+    <h2>位置調整</h2>
+    <div class="targetTabs">
+      <button data-target="live2d" class="active">Live2D</button>
+      <button data-target="arms">3D腕</button>
+    </div>
+    <div class="movePanel">
+      <button data-move="up" class="move">↑</button>
+      <button data-move="left" class="move">←</button><button data-move="center" class="move center">◎</button><button data-move="right" class="move">→</button>
+      <button data-move="down" class="move">↓</button>
+    </div>
+    <div class="iconGrid">
+      <button id="smaller" class="bigIcon"><b>−</b><span>小さく</span></button>
+      <button id="larger" class="bigIcon"><b>＋</b><span>大きく</span></button>
+      <button id="rotL" class="bigIcon"><b>↶</b><span>左回転</span></button>
+      <button id="rotR" class="bigIcon"><b>↷</b><span>右回転</span></button>
+    </div>
+    <button id="resetPos" class="iconBtn" data-icon="reset">位置をリセット</button>
+  </section>
+
+  <section class="card">
+    <div class="sectionHead">
+      <h2>BGMライブラリ</h2>
+      <button id="importBGM" class="mini">＋追加</button>
+    </div>
+    <input id="bgmSearch" class="search" placeholder="曲名を検索">
+    <div id="bgmLibrary" class="bgmLibrary"></div>
+    <div class="musicControls">
+      <div class="musicInfo"><div class="cover">♪</div><div class="grow"><b id="bgmName">BGMなし</b><small id="bgmTime">00:00 / 00:00</small></div></div>
+      <audio id="audio" preload="metadata"></audio>
+      <div class="row">
+        <button id="playBGM" class="iconBtn" data-icon="play">再生</button>
+        <button id="stopBGM" class="iconBtn" data-icon="stop">停止</button>
+      </div>
+      <label class="rangeLine"><span>音量</span><input id="bgmVolume" type="range" min="0" max="1" step=".01" value=".8"><output id="bgmVolumeOut">80%</output></label>
+      <label class="toggleLine"><span>ループ</span><input id="bgmLoop" type="checkbox" checked></label>
+      <label class="rangeLine"><span>開始位置</span><input id="bgmSeek" type="range" min="0" max="100" value="0"><output id="bgmSeekOut">0:00</output></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>背景・出力</h2>
+    <div class="backgrounds">
+      <button data-bg="transparent" class="active"><i class="checker"></i>透過</button>
+      <button data-bg="green"><i class="green"></i>グリーン</button>
+      <button data-bg="black"><i class="black"></i>黒</button>
+      <button data-bg="white"><i class="white"></i>白</button>
+    </div>
+    <label class="selectLine"><span>解像度</span><select id="resolution">
+      <option value="1080x1920">1080 × 1920</option>
+      <option value="720x1280">720 × 1280</option>
+      <option value="1080x1080">1080 × 1080</option>
+      <option value="1920x1080">1920 × 1080</option>
+    </select></label>
+    <label class="selectLine"><span>フレームレート</span><select id="fps"><option value="60">60 fps</option><option value="30">30 fps</option></select></label>
+    <div class="savePath"><span>保存先</span><small id="saveDir">読み込み中...</small><button id="chooseOutput" class="mini">変更</button></div>
+    <button id="openOutput" class="subtle">保存フォルダを開く</button>
+  </section>
+
+  <section class="card statusCard">
+    <div class="sectionHead"><h2>状態</h2><button id="runCheck" class="mini">チェック</button></div>
+    <div id="statusText" class="ok">準備中...</div>
+    <div id="checks" class="checks"></div>
+  </section>
+</aside>
+</main>
+
+<script type="module" src="./renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "slots": [
+    {
+      "id": "brand_left_bottom",
+      "label": "左下ブランド画像",
+      "defaultFile": "brand_left_bottom.png",
+      "uiOnly": true
+    },
+    {
+      "id": "preview_watermark",
+      "label": "プレビュー透かし",
+      "defaultFile": "preview_watermark.png",
+      "uiOnly": false
+    },
+    {
+      "id": "record_badge",
+      "label": "録画タグ",
+      "defaultFile": "record_badge.png",
+      "uiOnly": false
+    }
+  ]
+}

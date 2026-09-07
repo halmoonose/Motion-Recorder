@@ -1,0 +1,75 @@
+{
+  "name": "hal-motion-recorder",
+  "version": "1.0.0-rc.1",
+  "description": "HAL3LAB Motion Recorder RC1 - Live2D + 3D arms + webcam tracking + BGM + transparent recording",
+  "main": "src/main.cjs",
+  "type": "module",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "build:win": "electron-builder --win nsis portable",
+    "build:portable": "electron-builder --win portable",
+    "build:installer": "electron-builder --win nsis"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "1.0.1",
+    "@pixiv/three-vrm": "3.5.5",
+    "pixi-live2d-display": "0.4.0",
+    "pixi.js": "6.5.10",
+    "three": "0.185.1"
+  },
+  "devDependencies": {
+    "electron": "44.2.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "jp.hal3lab.motionrecorder",
+    "productName": "HAL Motion Recorder",
+    "asar": true,
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "models/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      },
+      {
+        "from": "models",
+        "to": "models"
+      }
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "HAL-Motion-Recorder-${version}-${arch}.${ext}",
+      "publisherName": "HAL3LAB"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "HAL Motion Recorder",
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}
