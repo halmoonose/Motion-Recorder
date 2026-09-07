@@ -11,7 +11,18 @@ function toast(t){let e=$("toast");if(!e){e=document.createElement("div");e.id="
 async function safe(name,fn){try{return await fn()}catch(e){console.error(name,e);window.halAPI.writeLog("[UI] "+name+": "+(e.stack||e)).catch(()=>{});toast(name+"に失敗しました");}}
 async function loadScript(src,key){if(window[key])return true;await new Promise((ok,ng)=>{const s=document.createElement("script");s.src=src+"?rc3";s.onload=ok;s.onerror=ng;document.head.appendChild(s)});return !!window[key]}
 
-async function ensureTracking(){if(window.HALTracking)return true;return loadScript("./engine-tracking.bundle.js","HALTracking")}
+async function ensureTracking(){
+  if(window.HALTracking)return true;
+  const ok = await loadScript("./engine-tracking.bundle.js","HALTracking");
+  if(ok && window.HALTracking?.prepare){
+    await window.HALTracking.prepare({
+      canvas:$("threeCanvas"),
+      getMirror:()=>state.mirror,
+      getTransform:()=>state.transforms.arms
+    });
+  }
+  return ok;
+}
 async function ensureLive2D(){
   if(window.HALLive2D)return true;
   const core=await window.halAPI.getCorePath();
@@ -63,8 +74,24 @@ async function loadBGM(){
   }
 }
 function bind(){
-  $("pickLive2D").onclick=()=>safe("Live2D選択",async()=>{const p=await window.halAPI.pickModel();if(!p)return;state.live2dPath=p;$("live2dPath").textContent=base(p);if(await ensureLive2D())await window.HALLive2D.load({path:p,canvas:$("live2dCanvas"),getTransform:()=>state.transforms.live2d})});
-  $("pickVRM").onclick=()=>safe("3D腕選択",async()=>{const p=await window.halAPI.pickVRM();if(!p)return;state.vrmPath=p;$("vrmPath").textContent=base(p);if(await ensureTracking())await window.HALTracking.loadVRM?.(p)});
+  $("pickLive2D").onclick=()=>safe("Live2D選択",async()=>{const p=await window.halAPI.pickModel();if(!p)return;state.live2dPath=p;$("live2dPath").textContent=base(p);if(await ensureLive2D()){
+  await window.HALLive2D.load({
+    path:p,
+    canvas:$("live2dCanvas"),
+    getTransform:()=>state.transforms.live2d
+  });
+  toast("Live2Dを読み込みました");
+}});
+  $("pickVRM").onclick=()=>safe("3D腕選択",async()=>{
+  const p=await window.halAPI.pickVRM();
+  if(!p)return;
+  state.vrmPath=p;
+  $("vrmPath").textContent=base(p);
+  if(await ensureTracking()){
+    await window.HALTracking.loadVRM?.(p);
+    toast("3D腕を読み込みました");
+  }
+});
   $("cameraBtn").onclick=()=>safe("カメラ",camera);
   $("calibrateBtn").onclick=()=>{state.transforms.arms={x:0,y:0,scale:1,rot:0};window.HALTracking?.calibrate?.()};
   $("smooth").oninput=e=>$("smoothOut").value=Number(e.target.value).toFixed(2);
