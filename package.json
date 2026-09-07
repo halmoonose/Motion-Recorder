@@ -1,17 +1,15 @@
 {
   "name": "hal-motion-recorder",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "HAL3LAB Motion Recorder RC1 - Live2D + 3D arms + webcam tracking + BGM + transparent recording",
-  "author": "HAL3LAB",
   "main": "src/main.cjs",
   "type": "module",
   "scripts": {
-  "start": "electron .",
-  "dev": "electron .",
-  "build:installer": "electron-builder --win nsis --publish never --config.artifactName=HAL-Motion-Recorder-Setup-${version}-${arch}.${ext}",
-  "build:portable": "electron-builder --win portable --publish never --config.artifactName=HAL-Motion-Recorder-Portable-${version}-${arch}.${ext}",
-  "build:win": "npm run build:installer && npm run build:portable"
-},
+    "start": "npm run build:renderer && electron .",
+    "dev": "npm run build:renderer && electron .",
+    "build:renderer": "node scripts/build-renderer.cjs",
+    "build:win": "npm run build:renderer && electron-builder --win nsis portable --publish never"
+  },
   "dependencies": {
     "@mediapipe/tasks-vision": "1.0.1",
     "@pixiv/three-vrm": "3.5.5",
@@ -21,7 +19,8 @@
   },
   "devDependencies": {
     "electron": "44.2.0",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "^26.0.12",
+    "esbuild": "^0.25.9"
   },
   "build": {
     "appId": "jp.hal3lab.motionrecorder",
@@ -71,5 +70,6 @@
       "shortcutName": "HAL Motion Recorder",
       "deleteAppDataOnUninstall": false
     }
-  }
+  },
+  "author": "HAL3LAB"
 }

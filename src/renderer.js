@@ -1,5 +1,6 @@
 
 import * as PIXI from "pixi.js";
+import { Live2DModel } from "pixi-live2d-display/cubism4";
 import { FilesetResolver, FaceLandmarker, PoseLandmarker, HandLandmarker } from "@mediapipe/tasks-vision";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -31,7 +32,7 @@ const state={
 const video=$("webcam"),comp=$("composite"),ctx=comp.getContext("2d",{alpha:true});
 const dbg=$("debugCanvas"),dctx=dbg.getContext("2d");
 let stream=null,micStream=null,faceLM=null,poseLM=null,handLM=null,lastV=-1;
-let faceRes=null,poseRes=null,handRes=null,l2d=null,Live2DModelClass=null,vrm=null,dummy=true;
+let faceRes=null,poseRes=null,handRes=null,l2d=null,vrm=null,dummy=true;
 let recording=false,recorder=null,chunks=[],recordStart=0;
 let audioCtx=null,audioSource=null,audioDest=null,bgmGain=null;
 let bgmLibrary=[];
@@ -54,15 +55,15 @@ function baseName(p){return p?p.split(/[\\/]/).pop():"未選択"}
 
 async function loadCore(path){
   if(!path)return false;
-  if(window.Live2DCubismCore){
-    state.corePath=path;
-  }else{
+  if(!window.Live2DCubismCore){
     await new Promise((resolve,reject)=>{
-      const s=document.createElement("script");s.src=fileUrl(path);s.onload=resolve;s.onerror=()=>reject(new Error("Cubism Coreを読み込めませんでした。"));document.head.appendChild(s);
+      const s=document.createElement("script");
+      s.src=fileUrl(path);
+      s.onload=resolve;
+      s.onerror=()=>reject(new Error("Cubism Coreを読み込めませんでした。"));
+      document.head.appendChild(s);
     });
   }
-  const mod=await import("pixi-live2d-display/cubism4");
-  Live2DModelClass=mod.Live2DModel;
   state.corePath=path;
   return true;
 }
@@ -130,12 +131,12 @@ async function initVision(){
     faceLM=await FaceLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:`${base}/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,delegate:"GPU"},runningMode:"VIDEO",outputFaceBlendshapes:true,outputFacialTransformationMatrixes:true,numFaces:1});
     poseLM=await PoseLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:`${base}/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task`,delegate:"GPU"},runningMode:"VIDEO",numPoses:1});
     handLM=await HandLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:`${base}/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,delegate:"GPU"},runningMode:"VIDEO",numHands:2});
-  }catch(e){showFatal("トラッカーの初期化に失敗しました。インターネット接続を確認して再起動してください。");log(e.stack||e.message)}
+  }catch(e){log("Tracker init failed: "+(e.stack||e.message)); $("statusText").textContent="カメラは使用できます。トラッカー初期化に失敗しました。"; $("statusText").className="bad"}
 }
 async function loadLive2D(path){
-  if(!Live2DModelClass)throw new Error("先にCubism Coreを設定してください。");
+  if(!window.Live2DCubismCore)throw new Error("先にCubism Coreを設定してください。");
   if(l2d){pixi.stage.removeChild(l2d);l2d.destroy({children:true})}
-  l2d=await Live2DModelClass.from(fileUrl(path),{autoInteract:false});l2d.anchor.set(.5,.5);pixi.stage.addChild(l2d);applyTransforms();
+  l2d=await Live2DModel.from(fileUrl(path),{autoInteract:false});l2d.anchor.set(.5,.5);pixi.stage.addChild(l2d);applyTransforms();
 }
 async function loadVRM(path){
   const loader=new GLTFLoader();loader.register(parser=>new VRMLoaderPlugin(parser));
