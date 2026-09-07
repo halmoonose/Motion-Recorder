@@ -24,3 +24,9 @@ select,.search{border:1px solid var(--line);background:#fff;border-radius:9px;pa
 .modal{position:fixed;inset:0;background:rgba(24,19,29,.48);z-index:100;display:grid;place-items:center}.modalCard{width:min(480px,calc(100vw - 40px));background:white;border-radius:20px;padding:28px;text-align:center;box-shadow:0 20px 80px rgba(0,0,0,.18)}.modalCard h1{font-size:20px}.modalCard p{font-size:12px;line-height:1.8;color:#716879}.modalCard small{display:block;margin-top:10px;color:#9b93a3}.setupIcon{width:70px;height:70px;border-radius:20px;display:grid;place-items:center;margin:auto;background:linear-gradient(145deg,#ffdce9,#e6ddff);font-weight:900;color:#735f82}
 .fatalBanner{position:fixed;z-index:150;left:12px;right:12px;top:70px;background:#fff0f3;border:1px solid #f2a7bb;border-radius:10px;padding:10px 12px;color:#9d3f5d;display:flex;align-items:center;gap:8px}.fatalBanner button{margin-left:auto;border:1px solid #e4b2c0;background:white;border-radius:7px;padding:5px 8px}
 @media(max-width:1200px){main{grid-template-columns:270px 1fr}.rightCol{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr)}.stage{height:600px}}
+
+.stage[data-bg="green"]{background:#00ff00!important;background-image:none!important}
+.stage[data-bg="black"]{background:#000!important;background-image:none!important}
+.stage[data-bg="white"]{background:#fff!important;background-image:none!important}
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);opacity:0;z-index:999;background:#2b2730;color:white;padding:10px 16px;border-radius:999px;font-size:12px;transition:.2s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
