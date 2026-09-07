@@ -6,12 +6,12 @@
   "main": "src/main.cjs",
   "type": "module",
   "scripts": {
-    "start": "electron .",
-    "dev": "electron .",
-    "build:win": "electron-builder --win nsis portable",
-    "build:portable": "electron-builder --win portable",
-    "build:installer": "electron-builder --win nsis"
-  },
+  "start": "electron .",
+  "dev": "electron .",
+  "build:installer": "electron-builder --win nsis --publish never --config.artifactName=HAL-Motion-Recorder-Setup-${version}-${arch}.${ext}",
+  "build:portable": "electron-builder --win portable --publish never --config.artifactName=HAL-Motion-Recorder-Portable-${version}-${arch}.${ext}",
+  "build:win": "npm run build:installer && npm run build:portable"
+},
   "dependencies": {
     "@mediapipe/tasks-vision": "1.0.1",
     "@pixiv/three-vrm": "3.5.5",
