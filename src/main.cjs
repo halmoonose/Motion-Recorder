@@ -3,6 +3,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell, session, protocol } = requir
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const crypto = require("crypto");
 
 let mainWindow = null;
 
@@ -25,7 +26,7 @@ function mimeFor(p){
 
 function registerModelRoot(modelPath){
   const root = path.dirname(modelPath);
-  const id = Buffer.from(root).toString("base64url");
+  const id = crypto.createHash("sha256").update(root).digest("hex").slice(0,32);
   modelRoots.set(id, root);
   return `halmodel://${id}/${encodeURIComponent(path.basename(modelPath))}`;
 }

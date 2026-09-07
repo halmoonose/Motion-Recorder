@@ -56,5 +56,7 @@ window.PIXI=PIXI;
     m.rotation=t.rot*Math.PI/180;
   }
 
-  window.HALLive2D={load,applyTransform};
+  function param(id,v){try{m?.internalModel?.coreModel?.setParameterValueById(id,v)}catch{}}
+function updateFace(data){if(!m||!data)return;const cats=data.faceBlendshapes?.[0]?.categories||[];const score=n=>cats.find(x=>x.categoryName===n)?.score||0;param("ParamEyeLOpen",1-score("eyeBlinkLeft"));param("ParamEyeROpen",1-score("eyeBlinkRight"));param("ParamMouthOpenY",Math.min(1,score("jawOpen")*1.5));param("ParamMouthForm",Math.max(-1,Math.min(1,(score("mouthSmileLeft")+score("mouthSmileRight"))-.2)));const a=data.facialTransformationMatrixes?.[0]?.data;if(a?.length>=16){const sy=Math.sqrt(a[0]*a[0]+a[1]*a[1]);const x=Math.atan2(a[6],a[10]),y=Math.atan2(-a[2],sy),z=Math.atan2(a[1],a[0]),d=180/Math.PI;param("ParamAngleX",-y*d*1.3);param("ParamAngleY",x*d*1.3);param("ParamAngleZ",-z*d)}}
+window.HALLive2D={load,applyTransform,updateFace};
 })();

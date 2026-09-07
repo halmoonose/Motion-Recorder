@@ -2,7 +2,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { VRMLoaderPlugin } from "@pixiv/three-vrm";
-import { FilesetResolver, PoseLandmarker, HandLandmarker } from "@mediapipe/tasks-vision";
+import { FilesetResolver, PoseLandmarker, HandLandmarker, FaceLandmarker } from "@mediapipe/tasks-vision";
 
 (()=>{
   let o=null,v=null,c=null,r=null,s=null,cam=null,g=null;
