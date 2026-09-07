@@ -1,10 +1,35 @@
 
-const { app, BrowserWindow, ipcMain, dialog, shell, session } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell, session, protocol } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
 let mainWindow = null;
+
+const modelRoots = new Map();
+
+function mimeFor(p){
+  const ext = path.extname(p).toLowerCase();
+  const map = {
+    ".json":"application/json; charset=utf-8",
+    ".moc3":"application/octet-stream",
+    ".png":"image/png",
+    ".jpg":"image/jpeg",
+    ".jpeg":"image/jpeg",
+    ".webp":"image/webp",
+    ".wav":"audio/wav",
+    ".mp3":"audio/mpeg"
+  };
+  return map[ext] || "application/octet-stream";
+}
+
+function registerModelRoot(modelPath){
+  const root = path.dirname(modelPath);
+  const id = Buffer.from(root).toString("base64url");
+  modelRoots.set(id, root);
+  return `halmodel://${id}/${encodeURIComponent(path.basename(modelPath))}`;
+}
+
 
 function ensureDir(p){ fs.mkdirSync(p,{recursive:true}); return p; }
 function appDataDir(){ return ensureDir(path.join(app.getPath("userData"), "HAL3LAB")); }
@@ -126,10 +151,61 @@ function createWindow(){
   mainWindow.loadFile(path.join(__dirname,"index.html"));
 }
 
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: "halmodel",
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true
+    }
+  }
+]);
+
 app.whenReady().then(async()=>{
+  const allowedPermissions = new Set(["media","microphone","camera","audioCapture","videoCapture"]);
   session.defaultSession.setPermissionRequestHandler((_wc, permission, callback)=>{
-    if(["media","microphone","camera"].includes(permission)) callback(true);
-    else callback(false);
+    callback(allowedPermissions.has(permission));
+  });
+  session.defaultSession.setPermissionCheckHandler((_wc, permission)=>{
+    return allowedPermissions.has(permission);
+  });
+
+  protocol.handle("halmodel", async (request)=>{
+    try{
+      const u = new URL(request.url);
+      const id = u.hostname;
+      const root = modelRoots.get(id);
+      if(!root) return new Response("Unknown model root",{status:404});
+
+      const rel = decodeURIComponent(u.pathname.replace(/^\//,""));
+      const normalized = path.normalize(rel);
+      const local = path.resolve(root, normalized);
+      const rootResolved = path.resolve(root) + path.sep;
+
+      if(!(local + path.sep).startsWith(rootResolved) && local !== path.resolve(root)){
+        return new Response("Forbidden",{status:403});
+      }
+      if(!fs.existsSync(local) || fs.statSync(local).isDirectory()){
+        return new Response("Not found",{status:404});
+      }
+
+      const data = fs.readFileSync(local);
+      return new Response(data,{
+        status:200,
+        headers:{
+          "Content-Type": mimeFor(local),
+          "Access-Control-Allow-Origin":"*",
+          "Cache-Control":"no-cache"
+        }
+      });
+    }catch(e){
+      writeLog("halmodel protocol error: "+(e.stack||e));
+      return new Response("Protocol error",{status:500});
+    }
   });
 
   ipcMain.handle("get-preflight",()=>buildPreflight());
@@ -163,8 +239,21 @@ app.whenReady().then(async()=>{
       properties:["openFile"],
       filters:[{name:"Live2D model3.json",extensions:["json"]}]
     });
-    return r.canceled?null:r.filePaths[0];
+    if(r.canceled)return null;
+    const p=r.filePaths[0];
+    const name=path.basename(p).toLowerCase();
+    if(!name.endsWith(".model3.json")){
+      throw new Error(".model3.json を選択してください。");
+    }
+    const url=registerModelRoot(p);
+    writeLog("Live2D model root registered: "+p);
+    return {path:p,url};
   });
+  ipcMain.handle("register-model-path",(_e,p)=>{
+    if(!p || !fs.existsSync(p))throw new Error("Live2Dモデルが見つかりません。");
+    return registerModelRoot(p);
+  });
+
   ipcMain.handle("pick-vrm",async()=>{
     const r=await dialog.showOpenDialog({
       title:"3D腕モデル",

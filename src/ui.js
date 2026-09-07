@@ -34,18 +34,79 @@ async function ensureLive2D(){
 }
 
 async function refreshCameras(){
-  try{const t=await navigator.mediaDevices.getUserMedia({video:true});t.getTracks().forEach(x=>x.stop())}catch{}
-  const ds=await navigator.mediaDevices.enumerateDevices();
-  const cams=ds.filter(x=>x.kind==="videoinput");
-  $("cameraSelect").innerHTML=cams.length?cams.map((c,i)=>`<option value="${c.deviceId}">${c.label||"Camera "+(i+1)}</option>`).join(""):'<option value="">カメラが見つかりません</option>';
+  try{
+    if(!navigator.mediaDevices?.enumerateDevices){
+      $("cameraSelect").innerHTML='<option value="">カメラAPI非対応</option>';
+      return;
+    }
+    const ds=await navigator.mediaDevices.enumerateDevices();
+    const cams=ds.filter(x=>x.kind==="videoinput");
+    $("cameraSelect").innerHTML=cams.length
+      ? cams.map((c,i)=>`<option value="${c.deviceId}">${c.label||"Camera "+(i+1)}</option>`).join("")
+      : '<option value="">デフォルトカメラを使用</option>';
+  }catch(e){
+    console.warn("enumerateDevices failed",e);
+    $("cameraSelect").innerHTML='<option value="">デフォルトカメラを使用</option>';
+  }
 }
 async function camera(){
   if(stream){
-    stream.getTracks().forEach(x=>x.stop());stream=null;$("webcam").srcObject=null;$("cameraBtn").textContent="カメラ開始";$("emptyHint").style.display="flex";return
+    stream.getTracks().forEach(x=>x.stop());
+    stream=null;
+    $("webcam").srcObject=null;
+    $("cameraBtn").textContent="カメラ開始";
+    $("emptyHint").style.display="flex";
+    toast("カメラを停止しました");
+    return;
   }
-  stream=await navigator.mediaDevices.getUserMedia({video:{deviceId:$("cameraSelect").value?{exact:$("cameraSelect").value}:undefined},audio:false});
-  $("webcam").srcObject=stream;await $("webcam").play();$("cameraBtn").textContent="カメラ停止";$("emptyHint").style.display="none";
-  safe("トラッキング",async()=>{if(await ensureTracking()){await window.HALTracking.init({video:$("webcam"),canvas:$("threeCanvas"),getMirror:()=>state.mirror,getTransform:()=>state.transforms.arms});window.HALTracking.start()}});
+
+  const selected=$("cameraSelect").value;
+  let lastError=null;
+
+  const attempts = [
+    selected ? {video:{deviceId:{exact:selected},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:60}},audio:false} : null,
+    {video:{width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30}},audio:false},
+    {video:true,audio:false}
+  ].filter(Boolean);
+
+  for(const constraints of attempts){
+    try{
+      stream=await navigator.mediaDevices.getUserMedia(constraints);
+      break;
+    }catch(e){
+      lastError=e;
+      console.warn("camera attempt failed",e);
+    }
+  }
+
+  if(!stream){
+    const detail = lastError ? `${lastError.name}: ${lastError.message}` : "Unknown error";
+    throw new Error(
+      "カメラを開始できませんでした。
+"+
+      detail+
+      "
+Windowsの 設定 → プライバシーとセキュリティ → カメラ で「デスクトップ アプリがカメラにアクセスできるようにする」がONか確認してください。"
+    );
+  }
+
+  $("webcam").srcObject=stream;
+  await $("webcam").play();
+  $("cameraBtn").textContent="カメラ停止";
+  $("emptyHint").style.display="none";
+  toast("カメラを開始しました");
+
+  safe("トラッキング",async()=>{
+    if(await ensureTracking()){
+      await window.HALTracking.init({
+        video:$("webcam"),
+        canvas:$("threeCanvas"),
+        getMirror:()=>state.mirror,
+        getTransform:()=>state.transforms.arms
+      });
+      window.HALTracking.start();
+    }
+  });
 }
 
 async function loadSlots(){
@@ -74,14 +135,23 @@ async function loadBGM(){
   }
 }
 function bind(){
-  $("pickLive2D").onclick=()=>safe("Live2D選択",async()=>{const p=await window.halAPI.pickModel();if(!p)return;state.live2dPath=p;$("live2dPath").textContent=base(p);if(await ensureLive2D()){
-  await window.HALLive2D.load({
-    path:p,
-    canvas:$("live2dCanvas"),
-    getTransform:()=>state.transforms.live2d
+  $("pickLive2D").onclick=()=>safe("Live2D選択",async()=>{
+    const selected=await window.halAPI.pickModel();
+    if(!selected)return;
+    state.live2dPath=selected.path;
+    state.live2dUrl=selected.url;
+    $("live2dPath").textContent=base(selected.path);
+
+    if(await ensureLive2D()){
+      await window.HALLive2D.load({
+        path:selected.path,
+        url:selected.url,
+        canvas:$("live2dCanvas"),
+        getTransform:()=>state.transforms.live2d
+      });
+      toast("Live2Dを読み込みました");
+    }
   });
-  toast("Live2Dを読み込みました");
-}});
   $("pickVRM").onclick=()=>safe("3D腕選択",async()=>{
   const p=await window.halAPI.pickVRM();
   if(!p)return;

@@ -27,7 +27,8 @@ window.PIXI=PIXI;
       m.destroy({children:true});
     }
 
-    const url="file:///"+o.path.replace(/\\/g,"/");
+    const url=o.url || ("file:///"+o.path.replace(/\\/g,"/"));
+    console.log("Live2D loading",url);
     m=await Live2DModel.from(url,{autoInteract:false});
 
     if(!m)throw new Error("Live2Dモデルを読み込めませんでした");

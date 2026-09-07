@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld("halAPI",{
   removeCore:()=>ipcRenderer.invoke("remove-core"),
 
   pickModel:()=>ipcRenderer.invoke("pick-model"),
+  registerModelPath:p=>ipcRenderer.invoke("register-model-path",p),
   pickVRM:()=>ipcRenderer.invoke("pick-vrm"),
 
   getSlots:()=>ipcRenderer.invoke("get-slots"),
