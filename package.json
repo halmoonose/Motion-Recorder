@@ -1,6 +1,6 @@
 {
   "name": "hal-motion-recorder",
-  "version": "1.0.0-rc.7",
+  "version": "1.0.0-rc.7.1",
   "description": "HAL3LAB Motion Recorder RC7 - Cubism 5 Live2D + 3D arms + webcam tracking + BGM",
   "main": "src/main.cjs",
   "type": "module",
@@ -19,7 +19,8 @@
   "devDependencies": {
     "electron": "44.2.0",
     "electron-builder": "^26.0.12",
-    "esbuild": "^0.25.9"
+    "esbuild": "^0.25.9",
+    "esbuild-plugins-node-modules-polyfill": "^1.8.3"
   },
   "build": {
     "appId": "jp.hal3lab.motionrecorder",
