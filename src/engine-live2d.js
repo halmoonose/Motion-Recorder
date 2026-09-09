@@ -1,62 +1,124 @@
 
-import * as PIXI from "pixi.js";
-import { Live2DModel } from "pixi-live2d-display/cubism4";
-window.PIXI=PIXI;
+import { Live2DCubismModel } from "live2d-renderer";
 
 (()=>{
-  let app=null,m=null,o=null;
-  let autoBaseScale=1;
+  let model=null;
+  let opts=null;
+  let baseScale=1;
 
-  async function load(opts){
-    o=opts;
-    if(!window.Live2DCubismCore)throw new Error("Cubism Core未設定");
+  function normalizedTransform(){
+    const t=opts?.getTransform?.() || {x:0,y:0,scale:1,rot:0};
+    const canvas=opts.canvas;
+    return {
+      x: t.x / Math.max(1, canvas.width),
+      y: t.y / Math.max(1, canvas.height),
+      scale: Math.max(0.05, baseScale * t.scale),
+      rot: t.rot
+    };
+  }
 
-    if(!app){
-      app=new PIXI.Application({
-        view:o.canvas,
-        width:o.canvas.width,
-        height:o.canvas.height,
-        backgroundAlpha:0,
-        antialias:true,
-        autoStart:true
-      });
+  async function load(o){
+    opts=o;
+    if(!window.Live2DCubismCore){
+      throw new Error("Cubism Coreが読み込まれていません");
     }
 
-    if(m){
-      app.stage.removeChild(m);
-      m.destroy({children:true});
+    if(model){
+      try{ model.destroy?.(); }catch{}
+      model=null;
     }
 
-    const url=o.url || ("file:///"+o.path.replace(/\\/g,"/"));
-    console.log("Live2D loading",url);
-    m=await Live2DModel.from(url,{autoInteract:false});
+    const source=o.url || o.path;
+    if(!source) throw new Error("Live2Dモデルのパスがありません");
 
-    if(!m)throw new Error("Live2Dモデルを読み込めませんでした");
+    const canvas=o.canvas;
+    if(!canvas.width) canvas.width=1080;
+    if(!canvas.height) canvas.height=1920;
 
-    m.anchor.set(.5,.5);
-    app.stage.addChild(m);
+    model=new Live2DCubismModel(canvas,{
+      autoAnimate:true,
+      autoInteraction:false,
+      tapInteraction:false,
+      randomMotion:false,
+      keepAspect:false,
+      cubismCorePath: window.__HAL_CUBISM_CORE_URL || undefined,
+      checkMocConsistency:true,
+      maxTextureSize:8192,
+      scale:1,
+      x:0,
+      y:0,
+      enablePhysics:true,
+      enableEyeblink:true,
+      enableBreath:true,
+      enableLipsync:false,
+      enableMotion:true,
+      enableExpression:true,
+      enableMovement:true,
+      enablePose:true
+    });
 
-    // Fit model inside canvas automatically.
-    const cw=app.renderer.width, ch=app.renderer.height;
-    const mw=Math.max(1,m.width), mh=Math.max(1,m.height);
-    autoBaseScale=Math.min((cw*0.88)/mw,(ch*0.88)/mh);
-    if(!Number.isFinite(autoBaseScale)||autoBaseScale<=0)autoBaseScale=1;
+    console.log("[HAL Live2D] loading Cubism5 model:", source);
+    await model.load(source);
 
+    // Start conservatively. The app-side +/- controls multiply from this base.
+    baseScale=1;
     applyTransform();
+
+    console.log("[HAL Live2D] loaded", {
+      parameters:model.parameters?.length,
+      parts:model.parts?.length,
+      drawables:model.drawables?.length
+    });
   }
 
   function applyTransform(){
-    if(!m||!o)return;
-    const t=o.getTransform();
-    const cw=app.renderer.width,ch=app.renderer.height;
+    if(!model || !opts) return;
+    const t=normalizedTransform();
 
-    m.x=cw/2+t.x;
-    m.y=ch/2+t.y;
-    m.scale.set(autoBaseScale*t.scale);
-    m.rotation=t.rot*Math.PI/180;
+    // live2d-renderer exposes pan/zoom style properties on the model.
+    // Guard each assignment so rendering stays alive across minor package API changes.
+    try{ if("scale" in model) model.scale=t.scale; }catch{}
+    try{ if("x" in model) model.x=t.x; }catch{}
+    try{ if("y" in model) model.y=-t.y; }catch{}
+    try{ if("rotation" in model) model.rotation=t.rot*Math.PI/180; }catch{}
   }
 
-  function param(id,v){try{m?.internalModel?.coreModel?.setParameterValueById(id,v)}catch{}}
-function updateFace(data){if(!m||!data)return;const cats=data.faceBlendshapes?.[0]?.categories||[];const score=n=>cats.find(x=>x.categoryName===n)?.score||0;param("ParamEyeLOpen",1-score("eyeBlinkLeft"));param("ParamEyeROpen",1-score("eyeBlinkRight"));param("ParamMouthOpenY",Math.min(1,score("jawOpen")*1.5));param("ParamMouthForm",Math.max(-1,Math.min(1,(score("mouthSmileLeft")+score("mouthSmileRight"))-.2)));const a=data.facialTransformationMatrixes?.[0]?.data;if(a?.length>=16){const sy=Math.sqrt(a[0]*a[0]+a[1]*a[1]);const x=Math.atan2(a[6],a[10]),y=Math.atan2(-a[2],sy),z=Math.atan2(a[1],a[0]),d=180/Math.PI;param("ParamAngleX",-y*d*1.3);param("ParamAngleY",x*d*1.3);param("ParamAngleZ",-z*d)}}
-window.HALLive2D={load,applyTransform,updateFace};
+  function setParam(id,v){
+    if(!model)return;
+    try{ model.setParameter(id,v); }catch{}
+  }
+
+  function updateFace(data){
+    if(!model || !data)return;
+    const cats=data.faceBlendshapes?.[0]?.categories||[];
+    const score=n=>cats.find(x=>x.categoryName===n)?.score||0;
+
+    setParam("ParamEyeLOpen",1-score("eyeBlinkLeft"));
+    setParam("ParamEyeROpen",1-score("eyeBlinkRight"));
+    setParam("ParamMouthOpenY",Math.min(1,score("jawOpen")*1.5));
+    setParam("ParamMouthForm",Math.max(-1,Math.min(1,(score("mouthSmileLeft")+score("mouthSmileRight"))-.2)));
+
+    const a=data.facialTransformationMatrixes?.[0]?.data;
+    if(a?.length>=16){
+      const sy=Math.sqrt(a[0]*a[0]+a[1]*a[1]);
+      const x=Math.atan2(a[6],a[10]);
+      const y=Math.atan2(-a[2],sy);
+      const z=Math.atan2(a[1],a[0]);
+      const d=180/Math.PI;
+      setParam("ParamAngleX",-y*d*1.3);
+      setParam("ParamAngleY",x*d*1.3);
+      setParam("ParamAngleZ",-z*d);
+    }
+  }
+
+  function info(){
+    return {
+      loaded:!!model,
+      parameters:model?.parameters?.length||0,
+      parts:model?.parts?.length||0,
+      drawables:model?.drawables?.length||0
+    };
+  }
+
+  window.HALLive2D={load,applyTransform,updateFace,info};
 })();

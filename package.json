@@ -1,7 +1,7 @@
 {
   "name": "hal-motion-recorder",
-  "version": "1.0.0-rc.6",
-  "description": "HAL3LAB Motion Recorder RC1 - Live2D + 3D arms + webcam tracking + BGM + transparent recording",
+  "version": "1.0.0-rc.7",
+  "description": "HAL3LAB Motion Recorder RC7 - Cubism 5 Live2D + 3D arms + webcam tracking + BGM",
   "main": "src/main.cjs",
   "type": "module",
   "scripts": {
@@ -13,9 +13,8 @@
   "dependencies": {
     "@mediapipe/tasks-vision": "1.0.1",
     "@pixiv/three-vrm": "3.5.5",
-    "pixi-live2d-display": "0.4.0",
-    "pixi.js": "6.5.10",
-    "three": "0.185.1"
+    "three": "0.185.1",
+    "live2d-renderer": "0.6.6"
   },
   "devDependencies": {
     "electron": "44.2.0",

@@ -24,6 +24,38 @@ function mimeFor(p){
   return map[ext] || "application/octet-stream";
 }
 
+
+function inspectModel3(modelPath){
+  const result={path:modelPath,ok:false,missing:[],mocVersion:null};
+  try{
+    const root=path.dirname(modelPath);
+    const data=JSON.parse(fs.readFileSync(modelPath,"utf8"));
+    const refs=data.FileReferences||{};
+    const files=[
+      refs.Moc,
+      ...(refs.Textures||[]),
+      refs.Physics,
+      refs.DisplayInfo
+    ].filter(Boolean);
+
+    for(const rel of files){
+      const full=path.resolve(root,rel);
+      if(!fs.existsSync(full))result.missing.push(rel);
+    }
+
+    if(refs.Moc){
+      const moc=fs.readFileSync(path.resolve(root,refs.Moc));
+      if(moc.length>=5 && moc.subarray(0,4).toString("ascii")==="MOC3"){
+        result.mocVersion=moc[4];
+      }
+    }
+    result.ok=result.missing.length===0;
+  }catch(e){
+    result.error=String(e.message||e);
+  }
+  return result;
+}
+
 function registerModelRoot(modelPath){
   const root = path.dirname(modelPath);
   const id = crypto.createHash("sha256").update(root).digest("hex").slice(0,32);
@@ -246,9 +278,14 @@ app.whenReady().then(async()=>{
     if(!name.endsWith(".model3.json")){
       throw new Error(".model3.json を選択してください。");
     }
+    const inspect=inspectModel3(p);
+    writeLog("Live2D model inspect: "+JSON.stringify(inspect));
+    if(!inspect.ok){
+      throw new Error("Live2Dモデル内の参照ファイルが不足しています: "+inspect.missing.join(", "));
+    }
     const url=registerModelRoot(p);
-    writeLog("Live2D model root registered: "+p);
-    return {path:p,url};
+    writeLog("Live2D model root registered: "+p+" mocVersion="+inspect.mocVersion);
+    return {path:p,url,inspect};
   });
   ipcMain.handle("register-model-path",(_e,p)=>{
     if(!p || !fs.existsSync(p))throw new Error("Live2Dモデルが見つかりません。");

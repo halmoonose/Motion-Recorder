@@ -30,8 +30,16 @@ async function ensureLive2D(){
   if(window.HALLive2D)return true;
   const core=await window.halAPI.getCorePath();
   if(!core){$("firstRun").classList.remove("hidden");return false}
+  const coreUrl=fileUrl(core);
+  window.__HAL_CUBISM_CORE_URL=coreUrl;
   if(!window.Live2DCubismCore){
-    await new Promise((ok,ng)=>{const s=document.createElement("script");s.src=fileUrl(core);s.onload=ok;s.onerror=ng;document.head.appendChild(s)});
+    await new Promise((ok,ng)=>{
+      const s=document.createElement("script");
+      s.src=coreUrl;
+      s.onload=ok;
+      s.onerror=()=>ng(new Error("Cubism Coreの読み込みに失敗しました"));
+      document.head.appendChild(s);
+    });
   }
   return loadScript("./engine-live2d.bundle.js","HALLive2D");
 }
